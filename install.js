@@ -166,19 +166,29 @@ const downloadsUrl = (
 	process.env.FFMPEG_BINARIES_URL ||
 	'https://github.com/eugeneware/ffmpeg-static/releases/download'
 )
+
 const baseUrl = `${downloadsUrl}/${release}`
-const downloadUrl = `${baseUrl}/${platform}-${arch}.gz`
-const readmeUrl = `${baseUrl}/${platform}-${arch}.README`
-const licenseUrl = `${baseUrl}/${platform}-${arch}.LICENSE`
+const targets = [
+  {platform: 'darwin', arch: 'arm64'},
+  {platform: 'darwin', arch: 'x64'},
+  {platform: 'win32', arch: 'x64'},
+]
 
-downloadFile(downloadUrl, ffmpegPath, onProgress)
-.then(() => {
-  fs.chmodSync(ffmpegPath, 0o755) // make executable
+targets.forEach(({platform, arch}) => {
+  const downloadUrl = `${baseUrl}/${platform}-${arch}.gz`
+  const readmeUrl = `${baseUrl}/${platform}-${arch}.README`
+  const licenseUrl = `${baseUrl}/${platform}-${arch}.LICENSE`
+  const ffmpegDestPath = `${ffmpegPath}-${platform}-${arch}`
+
+  downloadFile(downloadUrl, ffmpegDestPath, onProgress)
+  .then(() => {
+    fs.chmodSync(ffmpegDestPath, 0o755) // make executable
+  })
+  .catch(exitOnError)
+
+  .then(() => downloadFile(readmeUrl, `${ffmpegDestPath}.README`))
+  .catch(exitOnErrorOrWarnWith('Failed to download the ffmpeg README.'))
+
+  .then(() => downloadFile(licenseUrl, `${ffmpegPath}.LICENSE`))
+  .catch(exitOnErrorOrWarnWith('Failed to download the ffmpeg LICENSE.'))
 })
-.catch(exitOnError)
-
-.then(() => downloadFile(readmeUrl, `${ffmpegPath}.README`))
-.catch(exitOnErrorOrWarnWith('Failed to download the ffmpeg README.'))
-
-.then(() => downloadFile(licenseUrl, `${ffmpegPath}.LICENSE`))
-.catch(exitOnErrorOrWarnWith('Failed to download the ffmpeg LICENSE.'))
